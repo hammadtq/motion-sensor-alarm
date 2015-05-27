@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<!--
+This is an app that demonstrates how to use a Smart Phone as 
+Motion Sensor Alarm. It connects to an Arduino using WiFi Shield
+and turns a light on if motion is detected.
+
+Please note that you must enter the IP-address of the Arduino
+for this example to work.
+-->
+<head>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no
+		initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+
+	<title>Motion Sensor Alarm</title>
+
+	<style>
+		@import 'ui/css/evothings-app.css';
+	</style>
+
+	<script>
+	// Redirect console.log to Evothings Workbench.
+	if (window.hyper && window.hyper.log) { console.log = hyper.log }
+	</script>
+
+	<script src="cordova.js"></script>
+	<script src="libs/jquery/jquery.js"></script>
+	<script src="libs/evothings/evothings.js"></script>
+	<script src="libs/evothings/arduinotcp/arduinotcp.js"></script>
+
+</head>
+
+<body ontouchstart=""><!-- ontouchstart="" enables low-delay CSS transitions. -->
+
+	<header>
+		<button class="back" onclick="history.back()">
+			<img src="ui/images/arrow-left.svg" />
+		</button>
+
+		<img class="logotype" src="ui/images/logo.svg" alt="Evothings" />
+
+		<!--<button class="menu" onclick=""><img src="ui/images/menu.svg" /></button>-->
+	</header>
+
+	<h1>Motion Sensor Alarm</h1>
+
+	<h2>Enter IP-address of the Arduino</h2>
+
+	<input id="ArduinoIpAddress" value="192.168.1.200" type="url" />
+	<br/>
+	<h2>Enter Port-address of the Arduino</h2>
+	<input id="ArduinoPortAddress" value="4000" type="url" />
+	<br/>
+	<button class="green" onclick="app.connect()">START</button>
+	<button class="charcoal" onclick="app.disconnect()">FINISH</button>
+
+	<br />
+
+	<p>Status: <span id="ArduinoStatus">Not connected</span></p>
+	
+	<script>
+
+    // The watch id references the current `watchAcceleration`
+    var watchID = null
+
+    // Start watching the acceleration
+    function startWatch() {
+
+        // Update acceleration every 2 seconds
+        var options = { frequency: 2000 }
+
+        watchID = navigator.accelerometer.watchAcceleration(onSuccess, onError, options)
+    }
+
+    // Stop watching the acceleration
+    function stopWatch() {
+        if (watchID) {
+            navigator.accelerometer.clearWatch(watchID)
+            watchID = null
+        }
+    }
+
+    // onSuccess: Get a snapshot of the current acceleration
+    function onSuccess(acceleration) {
+        var element = document.getElementById('message')
+        var pxmotion = 0
+        var pymotion = 0
+        
+        //round the accelerometer readings                    
+		var xmotion = Math.round(acceleration.x,4)
+		var ymotion = Math.round(acceleration.y,4)
+		
+		//compare current readings with previous ones
+		if(xmotion != pxmotion || ymotion != pymotion){
+			element.innerHTML = 'Motion detected'
+			app.lightOn()
+			pxmotion = xmotion
+			pymotion = ymotion
+		}
+    }
+
+    // onError: Failed to get the acceleration
+    function onError() {
+        alert('onError!')
+    }
+
+    </script>
+    
+    <div id="message">Waiting for motion...</div>
+
+	<script>
+	// Short name for Arduino TCP library.
+	var arduino = evothings.arduinotcp
+
+	// Application object.
+	var app = {}
+
+	// Turn on light.
+	app.lightOn = function()
+	{
+		app.writePin(LOW)
+	}
+	
+	// Turn off light.
+	app.lightOff = function()
+	{
+		app.writePin(HIGH)
+	}
+
+	app.writePin = function(value)
+	{
+		arduino.digitalWrite(value)
+	}
+
+	app.connect = function()
+	{
+		arduino.connect($('#ArduinoIpAddress').val(), $('#ArduinoPortAddress').val(), function(success)
+		{
+			if (success)
+			{
+				startWatch()
+				$('#ArduinoStatus').html('Connected to the Arduino')
+			}
+			else
+			{
+				$('#ArduinoStatus').html('Connection error')
+			}
+		})
+	}
+
+	app.disconnect = function()
+	{
+		app.lightOff()
+		arduino.disconnect()
+		stopWatch()
+		$('#message').html('Waiting for motion...')
+		$('#ArduinoStatus').html('Disconnected')
+	}
+	</script>
+
+</body>
+
+</html>
